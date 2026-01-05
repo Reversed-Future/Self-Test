@@ -8,6 +8,8 @@ interface QuestionRendererProps {
   answer: string | string[];
   onChange: (value: string | string[]) => void;
   isGraded?: boolean;
+  isConfused?: boolean;
+  onToggleConfusion?: () => void;
 }
 
 export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
@@ -15,7 +17,9 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
   index,
   answer,
   onChange,
-  isGraded = false
+  isGraded = false,
+  isConfused = false,
+  onToggleConfusion
 }) => {
   const handleSingleChoice = (optionId: string) => {
     if (isGraded) return;
@@ -38,12 +42,40 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
   };
 
   return (
-    <div className={`p-6 rounded-xl bg-white border ${isGraded ? 'border-slate-200' : 'border-indigo-100 shadow-sm'}`}>
+    <div className={`p-6 rounded-xl bg-white border relative transition-all ${
+      isGraded ? 'border-slate-200' : 'border-indigo-100 shadow-sm'
+    } ${isConfused && !isGraded ? 'ring-2 ring-yellow-400 border-yellow-400' : ''}`}>
+      
+      {/* Confusion Toggle */}
+      {!isGraded && onToggleConfusion && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            onToggleConfusion();
+          }}
+          title="Mark as confused / 标记为困惑"
+          className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all border ${
+            isConfused 
+              ? 'bg-yellow-400 text-white border-yellow-500 shadow-md scale-110' 
+              : 'bg-white text-slate-300 border-slate-200 hover:text-yellow-500 hover:border-yellow-300'
+          }`}
+        >
+          <span className="font-bold text-lg">?</span>
+        </button>
+      )}
+
+      {/* Confused Indicator in Graded view */}
+      {isGraded && isConfused && (
+        <div className="absolute top-4 right-4 px-2 py-1 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded uppercase tracking-wider flex items-center gap-1">
+          <span className="text-sm">?</span> Marked Confused
+        </div>
+      )}
+
       <div className="flex items-start gap-4 mb-4">
         <span className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">
           {index + 1}
         </span>
-        <div className="flex-grow">
+        <div className="flex-grow pr-8">
           <div className="flex items-center gap-2 mb-1">
              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
                {question.type.replace(/_/g, ' ')}
