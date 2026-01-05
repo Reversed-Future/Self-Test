@@ -8,6 +8,7 @@ import { QuizTaker } from './components/QuizTaker';
 import { Button } from './components/Button';
 import { QRScanner } from './components/QRScanner';
 import { DevDocs } from './components/DevDocs';
+import { Dialog, DialogType } from './components/Dialog';
 import { encodeQuizKey, decodeQuizKey } from './utils/codec';
 
 type ViewState = 'HOME' | 'CREATE' | 'QUIZ' | 'EDIT';
@@ -27,9 +28,30 @@ export default function App() {
   const [isImporting, setIsImporting] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   
+  // Dialog State
+  const [dialog, setDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: DialogType;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+
+  const showAlert = (title: string, message: string, type: DialogType = 'info') => {
+    setDialog({ isOpen: true, title, message, type });
+  };
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setDialog({ isOpen: true, title, message, type: 'confirm', onConfirm });
+  };
+  
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Load from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('my_quizzes');
     if (saved) {
@@ -41,12 +63,10 @@ export default function App() {
     }
   }, []);
 
-  // Save to localStorage whenever quizzes change
   useEffect(() => {
     localStorage.setItem('my_quizzes', JSON.stringify(quizzes));
   }, [quizzes]);
 
-  // Handle generating share key when modal opens
   useEffect(() => {
     if (showShareModal) {
       const quiz = quizzes.find(q => q.id === showShareModal);
@@ -62,22 +82,20 @@ export default function App() {
     }
   }, [showShareModal, quizzes]);
 
-  // Handle drawing the QR Code when the key is generated and canvas is available
   useEffect(() => {
     if (generatedKey && qrCanvasRef.current) {
-      // Use Error Correction Level 'L' (Low) to maximize data capacity
       QRCode.toCanvas(qrCanvasRef.current, generatedKey, {
         width: 320,
         margin: 2,
         errorCorrectionLevel: 'L',
         color: {
-          dark: '#4f46e5', // Indigo-600
+          dark: '#4f46e5',
           light: '#ffffff'
         }
       }, (error) => {
         if (error) {
           console.error("QR Code generation error", error);
-          setQrError("This quiz is too large to be shared via QR code. Please use the Text Key instead.");
+          setQrError("This quiz is too large for QR. Use the Text Key.");
         }
       });
     }
@@ -102,15 +120,15 @@ export default function App() {
 
     if (decoded) {
       if (quizzes.some(q => q.id === decoded.id)) {
-        alert("This quiz is already in your library.");
+        showAlert("Duplicate Quiz", "This quiz is already in your library.", "warning");
       } else {
         setQuizzes([decoded, ...quizzes]);
         setImportKey('');
-        alert(`Successfully imported: ${decoded.title}`);
+        showAlert("Success", `Successfully imported: ${decoded.title}`, "success");
         return true;
       }
     } else {
-      alert("Invalid share key or QR code. The data might be corrupted.");
+      showAlert("Import Failed", "Invalid share key or QR code. The data might be corrupted.", "error");
     }
     return false;
   };
@@ -123,9 +141,9 @@ export default function App() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this quiz?")) {
+    showConfirm("Delete Quiz", "Are you sure you want to delete this quiz set permanently?", () => {
       setQuizzes(quizzes.filter(q => q.id !== id));
-    }
+    });
   };
 
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -166,10 +184,9 @@ export default function App() {
 
   const renderHome = () => (
     <div className="space-y-12">
-      {/* Header Section */}
-      <section className="text-center py-12 px-6 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl text-white shadow-xl shadow-indigo-100">
-        <h1 className="text-4xl md:text-5xl font-extrabold mb-4">Master Your Knowledge</h1>
-        <p className="text-indigo-100 text-lg mb-8 max-w-2xl mx-auto">Create custom self-test sets, import community shared tests, and track your progress with professional auto-grading.</p>
+      <section className="text-center py-12 px-6 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl text-white shadow-xl">
+        <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">Master Your Knowledge</h1>
+        <p className="text-indigo-100 text-lg mb-8 max-w-2xl mx-auto">Create custom self-test sets, import community tests, and track your progress with professional auto-grading.</p>
         
         <div className="flex flex-col items-center gap-6">
           <div className="flex flex-col sm:flex-row justify-center gap-4 w-full max-w-2xl">
@@ -194,11 +211,9 @@ export default function App() {
               </Button>
             </div>
           </div>
-          <p className="text-xs text-indigo-200">Tip: Click the QR icon to import via camera scanning</p>
         </div>
       </section>
 
-      {/* Library Section */}
       <section>
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-bold text-slate-800">My Library</h2>
@@ -237,162 +252,61 @@ export default function App() {
         )}
       </section>
 
-      {/* QR Scanner */}
-      {isScanning && (
-        <QRScanner onScanSuccess={onQRScanSuccess} onClose={() => setIsScanning(false)} />
-      )}
-
-      {/* Dev Docs */}
-      {showDevDocs && (
-        <DevDocs onClose={() => setShowDevDocs(false)} />
-      )}
-
-      {/* Start Quiz Prompt Modal */}
-      {showStartPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-8 max-md w-full shadow-2xl animate-in fade-in zoom-in duration-300">
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Ready to start?</h3>
-            <p className="text-slate-500 text-sm mb-6">Would you like to shuffle the questions for this test session?</p>
-            
-            <div className="space-y-3">
-              <Button 
-                variant="primary" 
-                className="w-full py-3 text-lg" 
-                onClick={() => startQuizSession(showStartPrompt, true)}
-              >
-                Yes, Shuffle Questions
-              </Button>
-              <Button 
-                variant="secondary" 
-                className="w-full py-3" 
-                onClick={() => startQuizSession(showStartPrompt, false)}
-              >
-                No, Use Original Order
-              </Button>
-              <Button 
-                variant="ghost" 
-                className="w-full" 
-                onClick={() => setShowStartPrompt(null)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Random N Modal */}
-      {showRandomPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in duration-300">
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Randomly Extract Questions</h3>
-            <p className="text-slate-500 text-sm mb-6">Enter how many questions you want to extract from the total {showRandomPrompt.questions.length}.</p>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Number of Questions (N)</label>
-                <input 
-                  type="number" 
-                  min="1" 
-                  max={showRandomPrompt.questions.length}
-                  className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-center text-2xl font-bold text-indigo-600"
-                  value={randomN}
-                  onChange={(e) => setRandomN(parseInt(e.target.value) || 0)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Button 
-                  variant="primary" 
-                  className="w-full py-3" 
-                  onClick={() => startRandomQuizSession(showRandomPrompt, randomN)}
-                  disabled={randomN < 1 || randomN > showRandomPrompt.questions.length}
-                >
-                  Start Random Test
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  className="w-full" 
-                  onClick={() => setShowRandomPrompt(null)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {isScanning && <QRScanner onScanSuccess={onQRScanSuccess} onClose={() => setIsScanning(false)} />}
+      {showDevDocs && <DevDocs onClose={() => setShowDevDocs(false)} />}
 
       {/* Share Modal */}
       {showShareModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl animate-in fade-in zoom-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95">
             <h3 className="text-xl font-bold text-slate-800 mb-2 text-center">Share This Quiz</h3>
-            <p className="text-slate-500 text-sm mb-6 text-center">Others can scan this code or use the text key to import.</p>
-            
-            <div className="flex flex-col items-center justify-center mb-6 min-h-[300px]">
-              {qrError ? (
-                <div className="p-6 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-center max-w-xs">
-                  <svg className="w-12 h-12 mx-auto mb-3 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <p className="text-sm font-medium">{qrError}</p>
-                </div>
-              ) : (
-                <div className="p-2 bg-white border-4 border-indigo-50 rounded-2xl">
-                  <canvas ref={qrCanvasRef} className="w-full max-w-[320px] h-auto aspect-square"></canvas>
-                  {!generatedKey && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-2xl">
-                       <svg className="animate-spin h-8 w-8 text-indigo-600" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    </div>
-                  )}
-                </div>
-              )}
+            <p className="text-slate-500 text-sm mb-6 text-center">Scan QR or use text key to import.</p>
+            <div className="flex flex-col items-center mb-6">
+              <canvas ref={qrCanvasRef} className="max-w-full h-auto aspect-square rounded-xl bg-indigo-50/50 p-2"></canvas>
             </div>
-
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 relative group">
-              {generatedKey ? (
-                <>
-                  <textarea 
-                    readOnly 
-                    className="w-full bg-transparent text-[10px] font-mono break-all focus:outline-none h-20 resize-none"
-                    value={generatedKey}
-                  />
-                  <div className="absolute inset-0 bg-slate-900/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                    <span className="bg-white px-2 py-1 rounded text-xs font-bold text-indigo-600 shadow-sm">Text Key</span>
-                  </div>
-                </>
-              ) : (
-                <div className="h-20 flex items-center justify-center text-slate-400">
-                  <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Preparing data...
-                </div>
-              )}
+            <div className="bg-slate-50 p-4 rounded-xl border mb-6 relative group overflow-hidden">
+               <textarea readOnly className="w-full bg-transparent text-[10px] font-mono h-20 outline-none" value={generatedKey} />
             </div>
-
             <div className="flex gap-4">
-              <Button 
-                variant="primary" 
-                className="flex-grow" 
-                disabled={!generatedKey}
-                onClick={() => {
-                  navigator.clipboard.writeText(generatedKey);
-                  alert("Key copied to clipboard!");
-                }}
-              >
-                Copy Text Key
-              </Button>
+              <Button className="flex-grow" onClick={() => {
+                navigator.clipboard.writeText(generatedKey);
+                showAlert("Copied", "Key copied to clipboard!", "success");
+              }}>Copy Key</Button>
               <Button variant="ghost" onClick={() => setShowShareModal(null)}>Close</Button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Random Selection Prompt */}
+      {showRandomPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95">
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Random Extract</h3>
+            <p className="text-slate-500 text-sm mb-6">Select number of questions from {showRandomPrompt.questions.length}.</p>
+            <input 
+              type="number" min="1" max={showRandomPrompt.questions.length}
+              className="w-full p-4 rounded-xl border text-center text-3xl font-bold text-indigo-600 mb-6 focus:ring-2 focus:ring-indigo-500 outline-none"
+              value={randomN}
+              onChange={(e) => setRandomN(parseInt(e.target.value) || 1)}
+            />
+            <div className="flex flex-col gap-2">
+              <Button onClick={() => startRandomQuizSession(showRandomPrompt, randomN)}>Start Test</Button>
+              <Button variant="ghost" onClick={() => setShowRandomPrompt(null)}>Cancel</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Dialog */}
+      <Dialog 
+        isOpen={dialog.isOpen}
+        onClose={() => setDialog(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={dialog.onConfirm}
+        title={dialog.title}
+        message={dialog.message}
+        type={dialog.type}
+      />
     </div>
   );
 
@@ -401,44 +315,26 @@ export default function App() {
       <nav className="bg-white border-b border-slate-200 h-16 sticky top-0 z-30 flex items-center px-6">
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentView('HOME')}>
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-200">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
             </div>
             <span className="font-bold text-xl tracking-tight text-slate-800">Quiz<span className="text-indigo-600">Genius</span></span>
           </div>
-          {currentView !== 'HOME' && (
-             <Button variant="ghost" size="sm" onClick={() => setCurrentView('HOME')}>Back to Home</Button>
-          )}
+          {currentView !== 'HOME' && <Button variant="ghost" size="sm" onClick={() => setCurrentView('HOME')}>Exit Editor</Button>}
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto px-6 py-10">
         {currentView === 'HOME' && renderHome()}
-        {currentView === 'CREATE' && (
-          <QuizEditor 
-            onSave={handleSaveQuiz} 
-            onCancel={() => setCurrentView('HOME')} 
-          />
-        )}
-        {currentView === 'QUIZ' && sessionQuiz && (
-          <QuizTaker 
-            quiz={sessionQuiz} 
-            onExit={() => { setCurrentView('HOME'); setSessionQuiz(null); }} 
-          />
-        )}
+        {currentView === 'CREATE' && <QuizEditor onSave={handleSaveQuiz} onCancel={() => setCurrentView('HOME')} />}
+        {currentView === 'QUIZ' && sessionQuiz && <QuizTaker quiz={sessionQuiz} onExit={() => { setCurrentView('HOME'); setSessionQuiz(null); }} />}
       </main>
 
-      <footer className="py-10 text-center border-t border-slate-200 bg-white">
+      <footer className="py-10 border-t border-slate-200 bg-white">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-slate-400 text-sm">&copy; 2024 QuizGenius. Built for lifelong learners.</p>
+          <p className="text-slate-400 text-sm">&copy; 2024 QuizGenius.</p>
           <div className="flex gap-6">
-            <button 
-              className="text-indigo-600 hover:text-indigo-700 text-sm font-semibold transition-colors"
-              onClick={() => setShowDevDocs(true)}
-            >
-              出题人指南 / Developer Docs
-            </button>
-            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-slate-400 hover:text-slate-600 text-sm">Gemini Billing Info</a>
+            <button className="text-indigo-600 hover:underline text-sm font-semibold" onClick={() => setShowDevDocs(true)}>出题人指南</button>
           </div>
         </div>
       </footer>
