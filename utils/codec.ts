@@ -60,7 +60,8 @@ export const encodeQuizKey = async (quiz: QuizSet): Promise<string> => {
     const uint8 = new TextEncoder().encode(jsonStr);
     
     // Using native CompressionStream (Deflate / ZLIB)
-    const stream = new Blob([uint8]).stream();
+    // Cast to any to avoid TypeScript errors with SharedArrayBuffer vs ArrayBuffer in strict environments
+    const stream = new Blob([uint8 as any]).stream();
     const compressionStream = new CompressionStream('deflate');
     const compressedStream = stream.pipeThrough(compressionStream);
     
@@ -80,7 +81,8 @@ export const decodeQuizKey = async (key: string): Promise<QuizSet | null> => {
     const compressedData = base64ToUint8Array(key);
     
     // Using native DecompressionStream
-    const stream = new Blob([compressedData]).stream();
+    // Cast to any to avoid TypeScript errors with SharedArrayBuffer vs ArrayBuffer in strict environments
+    const stream = new Blob([compressedData as any]).stream();
     const decompressionStream = new DecompressionStream('deflate');
     const decompressedStream = stream.pipeThrough(decompressionStream);
     

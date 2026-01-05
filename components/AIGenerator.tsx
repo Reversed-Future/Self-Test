@@ -20,7 +20,12 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({ onGenerated, onClose }
     setStatus('Gemini is brainstorming questions...');
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = process.env.API_KEY;
+      if (!apiKey) {
+        throw new Error("API Key is not configured in the environment.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview',
         contents: `Create a comprehensive quiz about "${topic}". Include a mix of: 
@@ -68,7 +73,12 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({ onGenerated, onClose }
         }
       });
 
-      const data = JSON.parse(response.text);
+      const text = response.text;
+      if (!text) {
+        throw new Error("The model returned an empty response.");
+      }
+
+      const data = JSON.parse(text);
       // Ensure IDs are unique for the generated options
       const formattedQuestions = data.questions.map((q: any) => ({
         ...q,
@@ -82,9 +92,9 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({ onGenerated, onClose }
         questions: formattedQuestions
       });
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("AI Generation failed. Please try again.");
+      alert(`AI Generation failed: ${error.message || "Please try again."}`);
     } finally {
       setLoading(false);
     }
