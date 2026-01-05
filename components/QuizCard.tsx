@@ -6,11 +6,12 @@ import { Button } from './Button';
 interface QuizCardProps {
   quiz: QuizSet;
   onStart: (id: string) => void;
+  onRandomStart: (id: string) => void;
   onShare: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
-export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onStart, onShare, onDelete }) => {
+export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onStart, onRandomStart, onShare, onDelete }) => {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start mb-3">
@@ -24,6 +25,7 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz, onStart, onShare, onDe
       </p>
       <div className="flex flex-wrap gap-2">
         <Button variant="primary" size="sm" onClick={() => onStart(quiz.id)}>Start Test</Button>
+        <Button variant="secondary" size="sm" onClick={() => onRandomStart(quiz.id)}>Random N</Button>
         <Button variant="secondary" size="sm" onClick={() => onShare(quiz.id)}>Share Key</Button>
         <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => onDelete(quiz.id)}>Delete</Button>
       </div>

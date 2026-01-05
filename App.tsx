@@ -19,6 +19,8 @@ export default function App() {
   const [importKey, setImportKey] = useState('');
   const [showShareModal, setShowShareModal] = useState<string | null>(null);
   const [showStartPrompt, setShowStartPrompt] = useState<QuizSet | null>(null);
+  const [showRandomPrompt, setShowRandomPrompt] = useState<QuizSet | null>(null);
+  const [randomN, setRandomN] = useState<number>(5);
   const [showDevDocs, setShowDevDocs] = useState(false);
   const [generatedKey, setGeneratedKey] = useState<string>('');
   const [qrError, setQrError] = useState<string | null>(null);
@@ -145,6 +147,23 @@ export default function App() {
     setShowStartPrompt(null);
   };
 
+  const startRandomQuizSession = (quiz: QuizSet, count: number) => {
+    const total = quiz.questions.length;
+    const n = Math.max(1, Math.min(count, total));
+    const shuffled = shuffleArray(quiz.questions);
+    const selected = shuffled.slice(0, n);
+    
+    const quizToRun = { 
+      ...quiz, 
+      title: `${quiz.title} (Random ${n})`,
+      questions: selected 
+    };
+    
+    setSessionQuiz(quizToRun);
+    setCurrentView('QUIZ');
+    setShowRandomPrompt(null);
+  };
+
   const renderHome = () => (
     <div className="space-y-12">
       {/* Header Section */}
@@ -203,6 +222,13 @@ export default function App() {
                   const q = quizzes.find(item => item.id === id);
                   if (q) setShowStartPrompt(q);
                 }}
+                onRandomStart={(id) => {
+                  const q = quizzes.find(item => item.id === id);
+                  if (q) {
+                    setShowRandomPrompt(q);
+                    setRandomN(Math.min(5, q.questions.length));
+                  }
+                }}
                 onShare={(id) => setShowShareModal(id)}
                 onDelete={handleDelete}
               />
@@ -224,7 +250,7 @@ export default function App() {
       {/* Start Quiz Prompt Modal */}
       {showStartPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-300">
+          <div className="bg-white rounded-2xl p-8 max-md w-full shadow-2xl animate-in fade-in zoom-in duration-300">
             <h3 className="text-xl font-bold text-slate-800 mb-2">Ready to start?</h3>
             <p className="text-slate-500 text-sm mb-6">Would you like to shuffle the questions for this test session?</p>
             
@@ -250,6 +276,48 @@ export default function App() {
               >
                 Cancel
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Random N Modal */}
+      {showRandomPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in duration-300">
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Randomly Extract Questions</h3>
+            <p className="text-slate-500 text-sm mb-6">Enter how many questions you want to extract from the total {showRandomPrompt.questions.length}.</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Number of Questions (N)</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  max={showRandomPrompt.questions.length}
+                  className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-center text-2xl font-bold text-indigo-600"
+                  value={randomN}
+                  onChange={(e) => setRandomN(parseInt(e.target.value) || 0)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Button 
+                  variant="primary" 
+                  className="w-full py-3" 
+                  onClick={() => startRandomQuizSession(showRandomPrompt, randomN)}
+                  disabled={randomN < 1 || randomN > showRandomPrompt.questions.length}
+                >
+                  Start Random Test
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="w-full" 
+                  onClick={() => setShowRandomPrompt(null)}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
           </div>
         </div>
