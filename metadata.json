@@ -1,0 +1,7 @@
+{
+  "name": "QuizGenius - Self-Testing Platform",
+  "description": "A professional self-testing application that supports multiple question types (objective & subjective), quiz sharing via keys, and automatic grading.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
