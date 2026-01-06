@@ -151,23 +151,34 @@ export default function App() {
 
   const renderHome = () => (
     <div className="space-y-12">
-      <section className="text-center py-12 px-6 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl text-white shadow-xl">
+      <section className="text-center py-16 px-6 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl text-white shadow-xl">
         <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">Master Your Knowledge</h1>
-        <p className="text-indigo-100 text-lg mb-8 max-w-2xl mx-auto">Create custom self-test sets, import community tests, and track your progress with professional auto-grading.</p>
+        <p className="text-indigo-100 text-lg mb-10 max-w-2xl mx-auto">Create custom self-test sets, import community tests, and track your progress with professional auto-grading.</p>
         
         <div className="flex flex-col items-center gap-6">
-          <div className="flex flex-col sm:flex-row justify-center gap-4 w-full max-w-2xl">
-            <Button size="lg" variant="success" className="shadow-lg px-8" onClick={() => setCurrentView('CREATE')}>Create New Quiz</Button>
+          <div className="flex flex-col md:flex-row justify-center items-stretch gap-4 w-full max-w-3xl">
+            <Button size="lg" variant="success" className="shadow-lg px-8 h-[56px] whitespace-nowrap" onClick={() => setCurrentView('CREATE')}>
+              Create New Quiz
+            </Button>
             
-            <div className="flex-grow flex border border-white/20 rounded-xl overflow-hidden bg-white/10 backdrop-blur-sm p-1">
+            <div className="flex-grow flex items-stretch border border-white/20 rounded-xl overflow-hidden bg-white/10 backdrop-blur-sm">
               <input 
                 type="text" 
                 placeholder="Paste Share Key..." 
-                className="bg-transparent px-4 py-2 outline-none text-white placeholder-indigo-200 w-full"
+                className="bg-transparent px-6 py-2 outline-none text-white placeholder-indigo-200 w-full text-base"
                 value={importKey}
                 onChange={(e) => setImportKey(e.target.value)}
               />
-              <Button variant="secondary" className="rounded-lg mr-1 px-6" onClick={handleImport} isLoading={isImporting}>Import Key</Button>
+              <div className="p-1 flex">
+                <Button 
+                  variant="secondary" 
+                  className="rounded-lg px-6 h-full whitespace-nowrap border-none" 
+                  onClick={handleImport} 
+                  isLoading={isImporting}
+                >
+                  Import Key
+                </Button>
+              </div>
             </div>
           </div>
         </div>
