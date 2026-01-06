@@ -194,11 +194,11 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
                     <button
                       key={q.id}
                       onClick={() => scrollToQuestion(q.id)}
-                      className={`relative h-10 w-full rounded-lg border text-xs font-bold flex items-center justify-center transition-all hover:scale-105 active:scale-95 ${statusClass} ${isConfused && !isSubmitted ? 'ring-2 ring-yellow-400' : ''}`}
+                      className={`relative h-10 w-full rounded-lg border text-xs font-bold flex items-center justify-center transition-all hover:scale-105 active:scale-95 ${statusClass} ${isConfused ? 'ring-2 ring-yellow-400' : ''}`}
                     >
                       {idx + 1}
-                      {isConfused && !isSubmitted && (
-                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 border-2 border-white rounded-full"></span>
+                      {isConfused && (
+                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 border-2 border-white rounded-full shadow-sm"></span>
                       )}
                     </button>
                   );
