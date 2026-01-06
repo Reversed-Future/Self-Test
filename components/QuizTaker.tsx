@@ -64,9 +64,19 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
           score = isCorrect ? q.points : 0;
           break;
         case QuestionType.FILL_IN_THE_BLANK:
-          const normalizedUser = (userAns as string || '').trim().toLowerCase();
-          isCorrect = q.correctAnswers.some(ans => ans.trim().toLowerCase() === normalizedUser);
-          score = isCorrect ? q.points : 0;
+          const userArr = Array.isArray(userAns) ? userAns : [userAns as string || ''];
+          let correctBlanks = 0;
+          q.correctAnswers.forEach((correctVal, idx) => {
+            const userVal = (userArr[idx] || '').trim().toLowerCase();
+            // Support synonyms with |
+            const synonyms = correctVal.split('|').map(s => s.trim().toLowerCase());
+            if (synonyms.includes(userVal)) {
+              correctBlanks++;
+            }
+          });
+          isCorrect = correctBlanks === q.correctAnswers.length;
+          // Partial credit:
+          score = q.correctAnswers.length > 0 ? Math.floor((correctBlanks / q.correctAnswers.length) * q.points) : 0;
           break;
         case QuestionType.SUBJECTIVE:
           isCorrect = true; 
@@ -82,10 +92,12 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
 
   const getStandardAnswerDisplay = (q: Question) => {
     if (q.type === QuestionType.SINGLE_CHOICE || q.type === QuestionType.MULTIPLE_CHOICE) {
-      // Return full text of correct options
       return q.correctAnswers
         .map(ansId => q.options?.find(o => o.id === ansId)?.text || ansId)
         .join(', ');
+    }
+    if (q.type === QuestionType.FILL_IN_THE_BLANK) {
+      return q.correctAnswers.map((ans, i) => `(${i+1}) ${ans}`).join('; ');
     }
     return q.correctAnswers.join(' / ');
   };
@@ -93,7 +105,7 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
   const answeredCount = quiz.questions.filter(q => {
     const val = answers[q.id];
     if (val === undefined) return false;
-    if (Array.isArray(val)) return val.length > 0;
+    if (Array.isArray(val)) return val.some(v => v.trim().length > 0);
     return val.trim().length > 0;
   }).length;
 
@@ -128,7 +140,7 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
                 <QuestionRenderer
                   question={q} 
                   index={idx}
-                  answer={answers[q.id] || (q.type === QuestionType.MULTIPLE_CHOICE ? [] : '')}
+                  answer={answers[q.id] || (q.type === QuestionType.MULTIPLE_CHOICE || q.type === QuestionType.FILL_IN_THE_BLANK ? [] : '')}
                   onChange={(val) => handleAnswerChange(q.id, val)}
                   isGraded={isSubmitted}
                   isConfused={confusedIds.has(q.id)}
@@ -138,11 +150,14 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
                   <div className={`p-6 rounded-2xl border ${
                     q.type === QuestionType.SUBJECTIVE 
                       ? 'bg-amber-50 border-amber-100 text-amber-800' 
-                      : (grade?.isCorrect ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-red-50 border-red-100 text-red-800')
+                      : (grade?.isCorrect ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : (grade && grade.score > 0 ? 'bg-blue-50 border-blue-100 text-blue-800' : 'bg-red-50 border-red-100 text-red-800'))
                   }`}>
                     <div className="flex justify-between items-center mb-4">
                        <span className="font-bold">
-                         {q.type === QuestionType.SUBJECTIVE ? 'Subjective Reference' : (grade?.isCorrect ? '✓ CORRECT' : '✗ INCORRECT')}
+                         {q.type === QuestionType.SUBJECTIVE 
+                           ? 'Subjective Reference' 
+                           : (grade?.isCorrect ? '✓ CORRECT' : (grade && grade.score > 0 ? '⚠ PARTIAL' : '✗ INCORRECT'))
+                         }
                        </span>
                        <span className="text-sm font-bold">
                          Score: {grade?.score} / {grade?.maxScore}
@@ -174,10 +189,9 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
                {isSubmitted ? 'Final Result' : 'Question Navigator'}
              </h3>
              
-             {/* Question Grid */}
              <div className="grid grid-cols-5 gap-2 mb-6">
                 {quiz.questions.map((q, idx) => {
-                  const hasAnswer = answers[q.id] && (Array.isArray(answers[q.id]) ? (answers[q.id] as string[]).length > 0 : (answers[q.id] as string).trim().length > 0);
+                  const hasAnswer = answers[q.id] && (Array.isArray(answers[q.id]) ? (answers[q.id] as string[]).some(v => v.trim().length > 0) : (answers[q.id] as string).trim().length > 0);
                   const isConfused = confusedIds.has(q.id);
                   const grade = grades.find(g => g.questionId === q.id);
 
@@ -185,6 +199,7 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
                   if (isSubmitted) {
                     if (q.type === QuestionType.SUBJECTIVE) statusClass = "bg-amber-500 text-white border-amber-600";
                     else if (grade?.isCorrect) statusClass = "bg-emerald-500 text-white border-emerald-600";
+                    else if (grade && grade.score > 0) statusClass = "bg-blue-500 text-white border-blue-600";
                     else statusClass = "bg-red-500 text-white border-red-600";
                   } else if (hasAnswer) {
                     statusClass = "bg-indigo-600 text-white border-indigo-700 shadow-sm";

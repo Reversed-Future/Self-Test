@@ -1,12 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import QRCode from 'qrcode';
 import { QuizSet } from './types';
 import { QuizCard } from './components/QuizCard';
 import { QuizEditor } from './components/QuizEditor';
 import { QuizTaker } from './components/QuizTaker';
 import { Button } from './components/Button';
-import { QRScanner } from './components/QRScanner';
 import { DevDocs } from './components/DevDocs';
 import { Dialog, DialogType } from './components/Dialog';
 import { encodeQuizKey, decodeQuizKey } from './utils/codec';
@@ -24,11 +22,8 @@ export default function App() {
   const [randomN, setRandomN] = useState<number>(5);
   const [showDevDocs, setShowDevDocs] = useState(false);
   const [generatedKey, setGeneratedKey] = useState<string>('');
-  const [qrError, setQrError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
   
-  // Dialog State
   const [dialog, setDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -50,8 +45,6 @@ export default function App() {
     setDialog({ isOpen: true, title, message, type: 'confirm', onConfirm });
   };
   
-  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
-
   useEffect(() => {
     const saved = localStorage.getItem('my_quizzes');
     if (saved) {
@@ -71,35 +64,14 @@ export default function App() {
     if (showShareModal) {
       const quiz = quizzes.find(q => q.id === showShareModal);
       if (quiz) {
-        setQrError(null);
         encodeQuizKey(quiz).then(key => {
           setGeneratedKey(key);
         });
       }
     } else {
       setGeneratedKey('');
-      setQrError(null);
     }
   }, [showShareModal, quizzes]);
-
-  useEffect(() => {
-    if (generatedKey && qrCanvasRef.current) {
-      QRCode.toCanvas(qrCanvasRef.current, generatedKey, {
-        width: 320,
-        margin: 2,
-        errorCorrectionLevel: 'L',
-        color: {
-          dark: '#4f46e5',
-          light: '#ffffff'
-        }
-      }, (error) => {
-        if (error) {
-          console.error("QR Code generation error", error);
-          setQrError("This quiz is too large for QR. Use the Text Key.");
-        }
-      });
-    }
-  }, [generatedKey]);
 
   const handleSaveQuiz = (quiz: QuizSet) => {
     const exists = quizzes.find(q => q.id === quiz.id);
@@ -128,17 +100,12 @@ export default function App() {
         return true;
       }
     } else {
-      showAlert("Import Failed", "Invalid share key or QR code.", "error");
+      showAlert("Import Failed", "Invalid share key. Please ensure you copied the full key.", "error");
     }
     return false;
   };
 
   const handleImport = () => performImport(importKey);
-
-  const onQRScanSuccess = async (decodedText: string) => {
-    setIsScanning(false);
-    await performImport(decodedText);
-  };
 
   const handleDelete = (id: string) => {
     showConfirm("Delete Quiz", "Are you sure you want to delete this quiz set permanently?", () => {
@@ -200,15 +167,7 @@ export default function App() {
                 value={importKey}
                 onChange={(e) => setImportKey(e.target.value)}
               />
-              <Button variant="secondary" className="rounded-lg mr-1" onClick={handleImport} isLoading={isImporting}>Import</Button>
-              <Button 
-                variant="ghost" 
-                className="bg-white/20 text-white hover:bg-white/30 rounded-lg p-2" 
-                title="Scan QR Code"
-                onClick={() => setIsScanning(true)}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
-              </Button>
+              <Button variant="secondary" className="rounded-lg mr-1 px-6" onClick={handleImport} isLoading={isImporting}>Import Key</Button>
             </div>
           </div>
         </div>
@@ -272,8 +231,7 @@ export default function App() {
         {currentView === 'QUIZ' && sessionQuiz && <QuizTaker quiz={sessionQuiz} onExit={() => { setCurrentView('HOME'); setSessionQuiz(null); }} />}
       </main>
 
-      {/* Global Modals (Moved out of render functions) */}
-      {isScanning && <QRScanner onScanSuccess={onQRScanSuccess} onClose={() => setIsScanning(false)} />}
+      {/* Global Modals */}
       {showDevDocs && <DevDocs onClose={() => setShowDevDocs(false)} />}
 
       {/* Start Quiz Prompt Modal */}
@@ -294,21 +252,26 @@ export default function App() {
       {/* Share Modal */}
       {showShareModal && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95">
+          <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 overflow-hidden">
             <h3 className="text-xl font-bold text-slate-800 mb-2 text-center">Share This Quiz</h3>
-            <p className="text-slate-500 text-sm mb-6 text-center">Scan QR or use text key to import.</p>
-            <div className="flex flex-col items-center mb-6">
-              <canvas ref={qrCanvasRef} className="max-w-full h-auto aspect-square rounded-xl bg-indigo-50/50 p-2"></canvas>
+            <p className="text-slate-500 text-xs mb-6 text-center">V2 Ultra-Compressed Key. Copy and share the key below.</p>
+            
+            <div className="bg-slate-50 p-6 rounded-xl border mb-6 relative group overflow-hidden shadow-inner">
+               <textarea 
+                 readOnly 
+                 className="w-full bg-transparent text-[10px] font-mono h-40 outline-none resize-none scrollbar-hide leading-relaxed text-slate-600" 
+                 value={generatedKey} 
+                 onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+               />
+               <div className="absolute bottom-2 right-3 text-[8px] font-bold text-slate-400 uppercase tracking-widest">v2 Compressed</div>
             </div>
-            <div className="bg-slate-50 p-4 rounded-xl border mb-6 relative group overflow-hidden">
-               <textarea readOnly className="w-full bg-transparent text-[10px] font-mono h-20 outline-none resize-none" value={generatedKey} />
-            </div>
+
             <div className="flex gap-4">
-              <Button className="flex-grow" onClick={() => {
+              <Button className="flex-grow shadow-lg shadow-indigo-100 py-4" onClick={() => {
                 navigator.clipboard.writeText(generatedKey);
-                showAlert("Copied", "Key copied to clipboard!", "success");
-              }}>Copy Key</Button>
-              <Button variant="ghost" onClick={() => setShowShareModal(null)}>Close</Button>
+                showAlert("Copied", "Ultra-compressed key copied to clipboard!", "success");
+              }}>Copy Key String</Button>
+              <Button variant="ghost" className="px-8" onClick={() => setShowShareModal(null)}>Close</Button>
             </div>
           </div>
         </div>
@@ -346,7 +309,7 @@ export default function App() {
 
       <footer className="py-10 border-t border-slate-200 bg-white">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-400 text-sm">
-          <p>&copy; 2024 QuizGenius.</p>
+          <p>&copy; 2024 QuizGenius. Professional Grade Self-Testing.</p>
           <div className="flex gap-6">
             <button className="text-indigo-600 hover:underline font-semibold" onClick={() => setShowDevDocs(true)}>出题人指南</button>
           </div>

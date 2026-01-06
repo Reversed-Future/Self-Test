@@ -28,7 +28,7 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
       type,
       text: '',
       points: 5,
-      correctAnswers: [],
+      correctAnswers: type === QuestionType.FILL_IN_THE_BLANK ? [''] : [],
       options: (type === QuestionType.SINGLE_CHOICE || type === QuestionType.MULTIPLE_CHOICE) 
         ? [{ id: '1', text: 'Option 1' }, { id: '2', text: 'Option 2' }] 
         : undefined,
@@ -77,6 +77,29 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
     });
   };
 
+  // Multi-blank handlers
+  const addBlank = (qId: string) => {
+    const q = questions.find(item => item.id === qId);
+    if (!q) return;
+    updateQuestion(qId, { correctAnswers: [...q.correctAnswers, ''] });
+  };
+
+  const removeBlank = (qId: string, index: number) => {
+    const q = questions.find(item => item.id === qId);
+    if (!q || q.correctAnswers.length <= 1) return;
+    const newAnswers = [...q.correctAnswers];
+    newAnswers.splice(index, 1);
+    updateQuestion(qId, { correctAnswers: newAnswers });
+  };
+
+  const updateBlankValue = (qId: string, index: number, val: string) => {
+    const q = questions.find(item => item.id === qId);
+    if (!q) return;
+    const newAnswers = [...q.correctAnswers];
+    newAnswers[index] = val;
+    updateQuestion(qId, { correctAnswers: newAnswers });
+  };
+
   const handleSave = () => {
     if (!title.trim()) {
       setAlert({ isOpen: true, title: "Title Required", message: "Please provide a title for your quiz set." });
@@ -86,14 +109,13 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
       setAlert({ isOpen: true, title: "No Questions", message: "Add at least one question." });
       return;
     }
-    // Basic validation for questions
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (!q.text.trim()) {
         setAlert({ isOpen: true, title: "Empty Question", message: `Question ${i + 1} has no text.` });
         return;
       }
-      if (q.type !== QuestionType.SUBJECTIVE && q.correctAnswers.length === 0) {
+      if (q.type !== QuestionType.SUBJECTIVE && q.correctAnswers.filter(a => a.trim()).length === 0) {
         setAlert({ isOpen: true, title: "No Correct Answer", message: `Question ${i + 1} must have at least one correct answer.` });
         return;
       }
@@ -209,14 +231,27 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
                )}
 
                {q.type === QuestionType.FILL_IN_THE_BLANK && (
-                 <div>
-                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Acceptable Answers (Comma separated)</label>
-                   <input 
-                     type="text" className="w-full p-3 bg-slate-50 rounded-lg border-none focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                     placeholder="Answer 1, Answer 2, ..."
-                     value={q.correctAnswers.join(', ')}
-                     onChange={(e) => updateQuestion(q.id, { correctAnswers: e.target.value.split(',').map(s => s.trim()) })}
-                   />
+                 <div className="space-y-4">
+                   <label className="block text-[10px] font-bold text-slate-400 uppercase">Blanks & Acceptable Answers (Use | for synonyms)</label>
+                   {q.correctAnswers.map((ans, bIdx) => (
+                     <div key={bIdx} className="flex items-center gap-2 group/blank animate-in fade-in zoom-in-95">
+                       <span className="text-xs font-bold text-slate-400 w-4">{bIdx + 1}.</span>
+                       <input 
+                         type="text" className="flex-grow p-3 bg-slate-50 rounded-lg border-none focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                         placeholder="e.g. Paris | paris"
+                         value={ans}
+                         onChange={(e) => updateBlankValue(q.id, bIdx, e.target.value)}
+                       />
+                       <button 
+                         onClick={() => removeBlank(q.id, bIdx)} 
+                         disabled={q.correctAnswers.length <= 1}
+                         className="text-slate-300 hover:text-red-400 disabled:opacity-0 transition-opacity"
+                       >
+                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                       </button>
+                     </div>
+                   ))}
+                   <Button variant="ghost" size="sm" onClick={() => addBlank(q.id)} className="text-indigo-600">+ Add Blank</Button>
                  </div>
                )}
 

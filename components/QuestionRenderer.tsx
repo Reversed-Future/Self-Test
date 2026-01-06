@@ -41,6 +41,15 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
     onChange(val);
   };
 
+  const handleBlankChange = (blankIdx: number, val: string) => {
+    if (isGraded) return;
+    const currentAnswers = Array.isArray(answer) 
+      ? [...answer] 
+      : new Array(question.correctAnswers.length).fill('');
+    currentAnswers[blankIdx] = val;
+    onChange(currentAnswers);
+  };
+
   return (
     <div className={`p-6 rounded-xl bg-white border relative transition-all ${
       isGraded ? 'border-slate-200' : 'border-indigo-100 shadow-sm'
@@ -145,14 +154,26 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
         )}
 
         {question.type === QuestionType.FILL_IN_THE_BLANK && (
-          <input
-            type="text"
-            placeholder="Type your answer here..."
-            value={answer as string || ''}
-            onChange={(e) => !isGraded && onChange(e.target.value)}
-            className="w-full p-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            disabled={isGraded}
-          />
+          <div className="space-y-3">
+            {question.correctAnswers.map((_, bIdx) => {
+              const currentVal = Array.isArray(answer) ? (answer[bIdx] || '') : (bIdx === 0 ? (answer as string) : '');
+              return (
+                <div key={bIdx} className="flex items-center gap-3 animate-in slide-in-from-left-2 duration-300" style={{ transitionDelay: `${bIdx * 50}ms` }}>
+                  {question.correctAnswers.length > 1 && (
+                    <span className="text-xs font-black text-slate-300 select-none">({bIdx + 1})</span>
+                  )}
+                  <input
+                    type="text"
+                    placeholder={`Answer for blank ${bIdx + 1}...`}
+                    value={currentVal}
+                    onChange={(e) => handleBlankChange(bIdx, e.target.value)}
+                    className="flex-grow p-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    disabled={isGraded}
+                  />
+                </div>
+              );
+            })}
+          </div>
         )}
 
         {question.type === QuestionType.SUBJECTIVE && (
