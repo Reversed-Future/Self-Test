@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { Button } from './Button';
-import { QuizSet, QuestionType } from '../types';
+import { QuizSet } from '../types';
 import { Dialog } from './Dialog';
 
 interface AIGeneratorProps {
@@ -19,11 +19,11 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({ onGenerated, onClose }
   const generateQuiz = async () => {
     if (!topic.trim()) return;
     setLoading(true);
-    setStatus('Thinking...');
+    setStatus('正在思考...');
 
     try {
       const apiKey = process.env.API_KEY;
-      if (!apiKey) throw new Error("API Key missing.");
+      if (!apiKey) throw new Error("缺少 API 密钥。");
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
@@ -58,19 +58,19 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({ onGenerated, onClose }
       });
 
       const text = response.text;
-      if (!text) throw new Error("Empty AI response.");
+      if (!text) throw new Error("AI 响应为空。");
 
       const data = JSON.parse(text);
-      const formattedQuestions = data.questions.map((q: any) => ({
+      const formattedQuestions = data.questions.map((q: { type: string; text: string; points: number; options?: { id?: string; text: string }[]; correctAnswers: string[]; subjectiveReference?: string }) => ({
         ...q,
-        id: Math.random().toString(36).substr(2, 9),
-        options: q.options?.map((o: any, idx: number) => ({ ...o, id: o.id || (idx + 1).toString() }))
+        id: Math.random().toString(36).substring(2, 11),
+        options: q.options?.map((o: { id?: string; text: string }, oIdx: number) => ({ ...o, id: o.id || (oIdx + 1).toString() }))
       }));
 
       onGenerated({ title: data.title, description: data.description, questions: formattedQuestions });
       onClose();
-    } catch (err: any) {
-      setError({ isOpen: true, message: err.message || "Something went wrong during generation." });
+    } catch (err: unknown) {
+      setError({ isOpen: true, message: err instanceof Error ? err.message : "生成过程中出错。" });
     } finally {
       setLoading(false);
     }
@@ -81,7 +81,7 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({ onGenerated, onClose }
       <Dialog 
         isOpen={error.isOpen} 
         onClose={() => setError({ isOpen: false, message: '' })} 
-        title="Generation Failed" 
+        title="生成失败" 
         message={error.message} 
         type="error" 
       />
@@ -90,16 +90,16 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({ onGenerated, onClose }
           <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           </div>
-          <h3 className="text-xl font-bold text-slate-800">AI Quiz Generator</h3>
+          <h3 className="text-xl font-bold text-slate-800">AI 试卷生成器</h3>
         </div>
         <textarea 
           className="w-full p-4 rounded-xl border mb-6 h-32 outline-none focus:ring-2 focus:ring-indigo-500"
-          placeholder="Topic..." value={topic} onChange={(e) => setTopic(e.target.value)} disabled={loading}
+          placeholder="主题..." value={topic} onChange={(e) => setTopic(e.target.value)} disabled={loading}
         />
         {loading && <div className="text-indigo-600 text-sm font-medium mb-4 flex items-center gap-2"><div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent animate-spin rounded-full"></div> {status}</div>}
         <div className="flex gap-3">
-          <Button className="flex-grow" onClick={generateQuiz} isLoading={loading}>Generate</Button>
-          <Button variant="ghost" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button className="flex-grow" onClick={generateQuiz} isLoading={loading}>生成</Button>
+          <Button variant="ghost" onClick={onClose} disabled={loading}>取消</Button>
         </div>
       </div>
     </div>

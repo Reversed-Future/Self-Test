@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { QuizSet, Question, QuestionType, Option } from '../types';
+import { QuizSet, Question, QuestionType } from '../types';
 import { Button } from './Button';
 import { JSONImporter } from './JSONImporter';
 import { Dialog } from './Dialog';
@@ -22,15 +22,27 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
     message: ''
   });
 
+  const translateType = (t: string) => {
+    switch(t) {
+      case QuestionType.SINGLE_CHOICE: return '单选题';
+      case QuestionType.MULTIPLE_CHOICE: return '多选题';
+      case QuestionType.TRUE_FALSE: return '判断题';
+      case QuestionType.FILL_IN_THE_BLANK: return '填空题';
+      case QuestionType.SUBJECTIVE: return '主观题';
+      default: return t;
+    }
+  };
+
   const addQuestion = (type: QuestionType) => {
     const newQuestion: Question = {
-      id: Math.random().toString(36).substr(2, 9),
+      // eslint-disable-next-line react-hooks/purity
+      id: Math.random().toString(36).substring(2, 11),
       type,
       text: '',
       points: 5,
       correctAnswers: type === QuestionType.FILL_IN_THE_BLANK ? [''] : [],
       options: (type === QuestionType.SINGLE_CHOICE || type === QuestionType.MULTIPLE_CHOICE) 
-        ? [{ id: '1', text: 'Option 1' }, { id: '2', text: 'Option 2' }] 
+        ? [{ id: '1', text: '选项 1' }, { id: '2', text: '选项 2' }] 
         : undefined,
     };
     setQuestions([...questions, newQuestion]);
@@ -65,7 +77,7 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
     const q = questions.find(item => item.id === qId);
     if (!q || !q.options) return;
     const nextId = (q.options.length + 1).toString();
-    updateQuestion(qId, { options: [...q.options, { id: nextId, text: `Option ${nextId}` }] });
+    updateQuestion(qId, { options: [...q.options, { id: nextId, text: `选项 ${nextId}` }] });
   };
 
   const removeOption = (qId: string, optId: string) => {
@@ -102,21 +114,21 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
 
   const handleSave = () => {
     if (!title.trim()) {
-      setAlert({ isOpen: true, title: "Title Required", message: "Please provide a title for your quiz set." });
+      setAlert({ isOpen: true, title: "标题必填", message: "请为您的试卷集提供一个标题。" });
       return;
     }
     if (questions.length === 0) {
-      setAlert({ isOpen: true, title: "No Questions", message: "Add at least one question." });
+      setAlert({ isOpen: true, title: "没有题目", message: "请至少添加一个题目。" });
       return;
     }
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (!q.text.trim()) {
-        setAlert({ isOpen: true, title: "Empty Question", message: `Question ${i + 1} has no text.` });
+        setAlert({ isOpen: true, title: "空题目", message: `第 ${i + 1} 题没有内容。` });
         return;
       }
       if (q.type !== QuestionType.SUBJECTIVE && q.correctAnswers.filter(a => a.trim()).length === 0) {
-        setAlert({ isOpen: true, title: "No Correct Answer", message: `Question ${i + 1} must have at least one correct answer.` });
+        setAlert({ isOpen: true, title: "无正确答案", message: `第 ${i + 1} 题必须至少有一个正确答案。` });
         return;
       }
     }
@@ -147,30 +159,35 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
       />
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{initialQuiz ? 'Edit Quiz' : 'Create New Quiz'}</h1>
-        <Button variant="secondary" size="sm" onClick={() => setIsJsonOpen(true)}>Import JSON</Button>
+        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{initialQuiz ? '编辑试卷' : '创建新试卷'}</h1>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <Button variant="secondary" size="sm" onClick={() => setIsJsonOpen(true)}>导入 JSON</Button>
+          <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
+          <Button variant="ghost" size="sm" onClick={onCancel}>放弃修改</Button>
+          <Button variant="primary" size="sm" className="shadow-lg shadow-indigo-100" onClick={handleSave}>保存试卷</Button>
+        </div>
       </div>
 
       <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div className="space-y-4">
           <input 
             type="text" className="w-full p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-xl font-bold"
-            value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Quiz Title (e.g., Biology Midterm)"
+            value={title} onChange={(e) => setTitle(e.target.value)} placeholder="试卷标题（例如：生物期中考试）"
           />
           <textarea 
             className="w-full p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
-            rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of the test content..."
+            rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="测试内容的简要描述..."
           />
         </div>
       </section>
 
       <section className="space-y-6">
         <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-          <h2 className="text-lg font-bold text-slate-800">Questions ({questions.length})</h2>
+          <h2 className="text-lg font-bold text-slate-800">题目 ({questions.length})</h2>
           <div className="flex gap-2 flex-wrap">
             {Object.values(QuestionType).map(type => (
               <Button key={type} size="sm" variant="secondary" onClick={() => addQuestion(type)}>
-                + {type.toLowerCase().replace(/_/g, ' ')}
+                + {translateType(type)}
               </Button>
             ))}
           </div>
@@ -184,12 +201,12 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
 
              <div className="flex items-center gap-2 mb-4">
                <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">{idx + 1}</span>
-               <span className="text-xs font-bold uppercase tracking-widest text-indigo-500">{q.type.replace(/_/g, ' ')}</span>
+               <span className="text-xs font-bold uppercase tracking-widest text-indigo-500">{translateType(q.type)}</span>
              </div>
 
              <textarea 
                className="w-full p-4 bg-slate-50 rounded-xl border-none font-medium mb-4 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
-               value={q.text} onChange={(e) => updateQuestion(q.id, { text: e.target.value })} placeholder="Type your question here..."
+               value={q.text} onChange={(e) => updateQuestion(q.id, { text: e.target.value })} placeholder="在此输入您的题目..."
              />
 
              <div className="space-y-3 mb-6">
@@ -212,7 +229,7 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
                        </button>
                      </div>
                    ))}
-                   <Button variant="ghost" size="sm" onClick={() => addOption(q.id)} className="text-indigo-600">+ Add Option</Button>
+                   <Button variant="ghost" size="sm" onClick={() => addOption(q.id)} className="text-indigo-600">+ 添加选项</Button>
                  </>
                )}
 
@@ -224,7 +241,7 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
                         onClick={() => updateQuestion(q.id, { correctAnswers: [val] })}
                         className={`flex-1 py-2 rounded-lg border font-bold capitalize transition-all ${q.correctAnswers[0] === val ? 'bg-indigo-600 border-indigo-700 text-white' : 'bg-white border-slate-200 text-slate-500'}`}
                      >
-                       {val}
+                       {val === 'true' ? '正确' : '错误'}
                      </button>
                    ))}
                  </div>
@@ -232,13 +249,13 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
 
                {q.type === QuestionType.FILL_IN_THE_BLANK && (
                  <div className="space-y-4">
-                   <label className="block text-[10px] font-bold text-slate-400 uppercase">Blanks & Acceptable Answers (Use | for synonyms)</label>
+                   <label className="block text-[10px] font-bold text-slate-400 uppercase">填空及可接受的答案（使用 | 分隔同义词）</label>
                    {q.correctAnswers.map((ans, bIdx) => (
                      <div key={bIdx} className="flex items-center gap-2 group/blank animate-in fade-in zoom-in-95">
                        <span className="text-xs font-bold text-slate-400 w-4">{bIdx + 1}.</span>
                        <input 
                          type="text" className="flex-grow p-3 bg-slate-50 rounded-lg border-none focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                         placeholder="e.g. Paris | paris"
+                         placeholder="例如：巴黎 | Paris"
                          value={ans}
                          onChange={(e) => updateBlankValue(q.id, bIdx, e.target.value)}
                        />
@@ -251,16 +268,16 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
                        </button>
                      </div>
                    ))}
-                   <Button variant="ghost" size="sm" onClick={() => addBlank(q.id)} className="text-indigo-600">+ Add Blank</Button>
+                   <Button variant="ghost" size="sm" onClick={() => addBlank(q.id)} className="text-indigo-600">+ 添加填空</Button>
                  </div>
                )}
 
                {q.type === QuestionType.SUBJECTIVE && (
                  <div>
-                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Reference Answer (For review)</label>
+                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">参考答案（供复习使用）</label>
                    <textarea 
                      className="w-full p-3 bg-slate-50 rounded-lg border-none focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                     placeholder="Points to look for in the answer..."
+                     placeholder="答案中需要注意的要点..."
                      value={q.subjectiveReference || ''}
                      onChange={(e) => updateQuestion(q.id, { subjectiveReference: e.target.value })}
                    />
@@ -270,7 +287,7 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
 
              <div className="flex items-center gap-4 text-xs font-bold text-slate-400 border-t pt-4">
                <div className="flex items-center gap-2">
-                 <span>POINTS:</span>
+                 <span>分值：</span>
                  <input 
                   type="number" className="w-14 p-1 border rounded text-center text-slate-800" 
                   value={q.points} onChange={(e) => updateQuestion(q.id, { points: parseInt(e.target.value) || 0 })} 
@@ -280,11 +297,6 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ onSave, onCancel, initia
           </div>
         ))}
       </section>
-
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t flex justify-center gap-4 z-40">
-        <Button variant="ghost" onClick={onCancel}>Discard Changes</Button>
-        <Button variant="primary" className="px-12 shadow-xl shadow-indigo-200" onClick={handleSave}>Save Quiz Set</Button>
-      </div>
     </div>
   );
 };

@@ -19,7 +19,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onClose }) 
       /* verbose= */ false
     );
 
-    scanner.render(onScanSuccess, (error) => {
+    scanner.render(onScanSuccess, () => {
       // Quietly handle errors (common when no QR is in frame)
     });
 
@@ -36,15 +36,15 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onScanSuccess, onClose }) 
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
       <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl overflow-hidden">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-slate-800">Scan Quiz QR Code</h3>
+          <h3 className="text-lg font-bold text-slate-800">扫描试卷二维码</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">&times;</button>
         </div>
         
         <div id="reader" className="w-full rounded-xl overflow-hidden border border-slate-200"></div>
         
         <div className="mt-6 text-center">
-          <p className="text-sm text-slate-500 mb-4">Point your camera at the share QR code.</p>
-          <Button variant="secondary" onClick={onClose} className="w-full">Cancel</Button>
+          <p className="text-sm text-slate-500 mb-4">请将摄像头对准分享二维码。</p>
+          <Button variant="secondary" onClick={onClose} className="w-full">取消</Button>
         </div>
       </div>
     </div>

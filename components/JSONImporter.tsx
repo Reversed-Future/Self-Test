@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from './Button';
-import { QuizSet, Question, QuestionType, Option } from '../types';
+import { QuizSet, QuestionType, Option } from '../types';
 
 interface JSONImporterProps {
   onImport: (data: Partial<QuizSet>) => void;
@@ -11,45 +11,53 @@ interface JSONImporterProps {
 export const JSONImporter: React.FC<JSONImporterProps> = ({ onImport, onClose }) => {
   const [jsonText, setJsonText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
-  const normalizeImportData = (raw: any): Partial<QuizSet> => {
-    if (!raw.questions || !Array.isArray(raw.questions)) return raw;
+  const handleScroll = () => {
+    if (textareaRef.current && overlayRef.current) {
+      overlayRef.current.scrollTop = textareaRef.current.scrollTop;
+    }
+  };
 
-    const normalizedQuestions = raw.questions.map((q: any) => {
+  const normalizeImportData = (raw: { questions?: unknown[] }): Partial<QuizSet> => {
+    if (!raw.questions || !Array.isArray(raw.questions)) return raw as Partial<QuizSet>;
+
+    const normalizedQuestions = (raw.questions as Record<string, unknown>[]).map((q: Record<string, unknown>) => {
       const isChoice = q.type === QuestionType.SINGLE_CHOICE || q.type === QuestionType.MULTIPLE_CHOICE;
       
       // 处理选项：如果提供的是字符串数组，转换为对象数组
-      let finalOptions: Option[] | undefined = undefined;
-      if (isChoice && Array.isArray(q.options)) {
-        if (typeof q.options[0] === 'string') {
-          finalOptions = q.options.map((text: string, idx: number) => ({
+      let finalOptions: Option[] | undefined;
+      const rawOptions = q.options;
+      if (isChoice && Array.isArray(rawOptions)) {
+        if (typeof rawOptions[0] === 'string') {
+          finalOptions = (rawOptions as string[]).map((text: string, idx: number) => ({
             id: (idx + 1).toString(),
             text
           }));
         } else {
-          finalOptions = q.options;
+          finalOptions = rawOptions as Option[];
         }
       } else {
-        finalOptions = q.options;
+        finalOptions = rawOptions as Option[] | undefined;
       }
 
       // 处理答案：如果是数字索引，转换为对应的字符串 ID
-      let finalAnswers: string[] = q.correctAnswers || [];
-      if (isChoice && Array.isArray(q.correctAnswers) && typeof q.correctAnswers[0] === 'number') {
-        finalAnswers = q.correctAnswers.map((idx: number) => (idx + 1).toString());
-      } else if (Array.isArray(q.correctAnswers)) {
-        finalAnswers = q.correctAnswers.map(String);
+      const rawAnswers = q.correctAnswers;
+      let finalAnswers: string[] = Array.isArray(rawAnswers) ? (rawAnswers as unknown[]).map(String) : [];
+      if (isChoice && Array.isArray(rawAnswers) && typeof rawAnswers[0] === 'number') {
+        finalAnswers = (rawAnswers as number[]).map((idx: number) => (idx + 1).toString());
       }
 
       return {
         ...q,
-        id: q.id || Math.random().toString(36).substr(2, 9),
+        id: (q.id as string) || Math.random().toString(36).substring(2, 11),
         options: finalOptions,
         correctAnswers: finalAnswers
       };
     });
 
-    return { ...raw, questions: normalizedQuestions };
+    return { ...raw, questions: normalizedQuestions } as Partial<QuizSet>;
   };
 
   const handleImport = () => {
@@ -59,13 +67,13 @@ export const JSONImporter: React.FC<JSONImporterProps> = ({ onImport, onClose })
         throw new Error("无效的 JSON：必须是一个对象。");
       }
 
-      let importData: any = Array.isArray(parsed) ? { questions: parsed } : parsed;
+      const importData = Array.isArray(parsed) ? { questions: parsed } : parsed;
       const normalizedData = normalizeImportData(importData);
 
       onImport(normalizedData);
       onClose();
-    } catch (e: any) {
-      setError(e.message || "JSON 解析失败，请检查格式是否正确（注意标点符号）。");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "JSON 解析失败，请检查格式是否正确（注意标点符号）。");
     }
   };
 
@@ -110,10 +118,28 @@ export const JSONImporter: React.FC<JSONImporterProps> = ({ onImport, onClose })
         </div>
 
         <div className="flex-grow flex flex-col gap-4 overflow-hidden mb-6">
-          <div className="relative min-h-[600px]">
+          <div className="relative h-[500px] group">
+            {/* Background Example Overlay */}
+            <div 
+              ref={overlayRef}
+              className="absolute inset-0 p-8 font-mono text-sm leading-relaxed text-slate-400 opacity-40 overflow-y-auto scrollbar-hide pointer-events-none z-0"
+            >
+              {!jsonText && (
+                <div className="animate-in fade-in duration-500">
+                  <div className="border-b border-slate-200 pb-2 mb-4">
+                    <span className="block text-slate-500 font-black uppercase text-[10px] tracking-widest">推荐 JSON 编写格式 (V2 Optimized):</span>
+                  </div>
+                  <pre className="text-sm font-mono leading-relaxed whitespace-pre-wrap">{exampleJson}</pre>
+                </div>
+              )}
+            </div>
+
+            {/* Real Textarea */}
             <textarea 
+              ref={textareaRef}
+              onScroll={handleScroll}
               className={`w-full h-full p-8 font-mono text-sm leading-relaxed rounded-xl border ${error ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-slate-50'} focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none resize-none shadow-inner z-10 relative`}
-              placeholder=""
+              placeholder={!jsonText ? "\n".repeat(30) : ""}
               style={{ backgroundColor: jsonText ? 'white' : 'transparent' }}
               value={jsonText}
               onChange={(e) => {
@@ -121,14 +147,6 @@ export const JSONImporter: React.FC<JSONImporterProps> = ({ onImport, onClose })
                 if (error) setError(null);
               }}
             />
-            {!jsonText && (
-              <div className="absolute inset-0 p-8 pointer-events-none opacity-40 overflow-y-auto scrollbar-hide">
-                <div className="border-b border-slate-200 pb-2 mb-4">
-                  <span className="block text-slate-500 font-black uppercase text-[12px] tracking-widest">推荐 JSON 编写格式 (V2 Optimized):</span>
-                </div>
-                <pre className="text-xs font-mono leading-relaxed text-slate-500">{exampleJson}</pre>
-              </div>
-            )}
           </div>
           {error && (
             <div className="p-4 bg-red-100 text-red-700 text-sm rounded-lg border border-red-200 flex items-start gap-3 animate-in slide-in-from-top-2">

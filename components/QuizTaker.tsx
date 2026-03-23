@@ -53,17 +53,19 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
       let score = 0;
       switch (q.type) {
         case QuestionType.SINGLE_CHOICE:
-        case QuestionType.TRUE_FALSE:
+        case QuestionType.TRUE_FALSE: {
           isCorrect = userAns === q.correctAnswers[0];
           score = isCorrect ? q.points : 0;
           break;
-        case QuestionType.MULTIPLE_CHOICE:
+        }
+        case QuestionType.MULTIPLE_CHOICE: {
           const sortedCorrect = [...q.correctAnswers].sort().join(',');
           const sortedUser = Array.isArray(userAns) ? [...userAns].sort().join(',') : '';
           isCorrect = sortedCorrect === sortedUser;
           score = isCorrect ? q.points : 0;
           break;
-        case QuestionType.FILL_IN_THE_BLANK:
+        }
+        case QuestionType.FILL_IN_THE_BLANK: {
           const userArr = Array.isArray(userAns) ? userAns : [userAns as string || ''];
           let correctBlanks = 0;
           q.correctAnswers.forEach((correctVal, idx) => {
@@ -78,6 +80,7 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
           // Partial credit:
           score = q.correctAnswers.length > 0 ? Math.floor((correctBlanks / q.correctAnswers.length) * q.points) : 0;
           break;
+        }
         case QuestionType.SUBJECTIVE:
           isCorrect = true; 
           score = 0;
@@ -119,15 +122,15 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
         onClose={() => setShowExitConfirm(false)}
         onConfirm={onExit}
         type="confirm"
-        title="Exit Quiz?"
-        message="Your progress will not be saved. Are you sure you want to end this session?"
-        confirmText="Exit Session"
+        title="退出测试？"
+        message="您的进度将不会被保存。您确定要结束本次测试吗？"
+        confirmText="退出测试"
       />
 
       <div className="w-full lg:max-w-4xl space-y-8">
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold text-slate-800 mb-2">
-            {isSubmitted ? 'Test Report: ' : ''}{quiz.title}
+            {isSubmitted ? '测试报告：' : ''}{quiz.title}
           </h1>
           <p className="text-slate-500">{quiz.description}</p>
         </div>
@@ -155,22 +158,22 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
                     <div className="flex justify-between items-center mb-4">
                        <span className="font-bold">
                          {q.type === QuestionType.SUBJECTIVE 
-                           ? 'Subjective Reference' 
-                           : (grade?.isCorrect ? '✓ CORRECT' : (grade && grade.score > 0 ? '⚠ PARTIAL' : '✗ INCORRECT'))
+                           ? '主观题参考' 
+                           : (grade?.isCorrect ? '✓ 正确' : (grade && grade.score > 0 ? '⚠ 部分正确' : '✗ 错误'))
                          }
                        </span>
                        <span className="text-sm font-bold">
-                         Score: {grade?.score} / {grade?.maxScore}
+                         得分：{grade?.score} / {grade?.maxScore}
                        </span>
                     </div>
                     {q.type !== QuestionType.SUBJECTIVE ? (
                       <div className="text-sm opacity-80 font-medium">
-                        Standard Answer: <span>{getStandardAnswerDisplay(q)}</span>
+                        标准答案：<span>{getStandardAnswerDisplay(q)}</span>
                       </div>
                     ) : (
                       <div className="text-sm">
-                        <span className="font-bold block mb-1">Grading Reference:</span>
-                        <p className="whitespace-pre-wrap opacity-90">{q.subjectiveReference || "No reference provided."}</p>
+                        <span className="font-bold block mb-1">评分参考：</span>
+                        <p className="whitespace-pre-wrap opacity-90">{q.subjectiveReference || "未提供参考。"}</p>
                       </div>
                     )}
                   </div>
@@ -186,7 +189,7 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xl space-y-6">
           <div>
              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">
-               {isSubmitted ? 'Final Result' : 'Question Navigator'}
+               {isSubmitted ? '最终结果' : '题目导航'}
              </h3>
              
              <div className="grid grid-cols-5 gap-2 mb-6">
@@ -222,7 +225,7 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
 
              <div className="pt-4 border-t border-slate-50 space-y-2">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-500">{isSubmitted ? 'Total Score' : 'Completion'}</span>
+                  <span className="text-slate-500">{isSubmitted ? '总分' : '完成进度'}</span>
                   <span className="font-black text-indigo-600 text-lg">
                     {isSubmitted ? `${totalScore} / ${maxScore}` : `${answeredCount} / ${quiz.questions.length}`}
                   </span>
@@ -241,15 +244,15 @@ export const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, onExit }) => {
           <div className="flex flex-col gap-2 pt-2">
              {!isSubmitted ? (
                <Button variant="primary" className="w-full py-4 shadow-lg shadow-indigo-100" onClick={calculateGrade}>
-                 Submit Quiz
+                 提交试卷
                </Button>
              ) : (
                <Button variant="primary" className="w-full py-4 shadow-lg shadow-emerald-100" onClick={onExit}>
-                 Finish & Exit
+                 完成并退出
                </Button>
              )}
              <Button variant="ghost" onClick={() => setShowExitConfirm(true)}>
-               {isSubmitted ? 'Close Report' : 'Quit Session'}
+               {isSubmitted ? '关闭报告' : '退出测试'}
              </Button>
           </div>
         </div>

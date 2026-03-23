@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QuizSet } from './types';
 import { QuizCard } from './components/QuizCard';
 import { QuizEditor } from './components/QuizEditor';
@@ -12,7 +12,17 @@ import { encodeQuizKey, decodeQuizKey } from './utils/codec';
 type ViewState = 'HOME' | 'CREATE' | 'QUIZ' | 'EDIT';
 
 export default function App() {
-  const [quizzes, setQuizzes] = useState<QuizSet[]>([]);
+  const [quizzes, setQuizzes] = useState<QuizSet[]>(() => {
+    const saved = localStorage.getItem('my_quizzes');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to load quizzes", e);
+      }
+    }
+    return [];
+  });
   const [currentView, setCurrentView] = useState<ViewState>('HOME');
   const [sessionQuiz, setSessionQuiz] = useState<QuizSet | null>(null);
   const [importKey, setImportKey] = useState('');
@@ -46,17 +56,6 @@ export default function App() {
   };
   
   useEffect(() => {
-    const saved = localStorage.getItem('my_quizzes');
-    if (saved) {
-      try {
-        setQuizzes(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to load quizzes", e);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
     localStorage.setItem('my_quizzes', JSON.stringify(quizzes));
   }, [quizzes]);
 
@@ -69,7 +68,8 @@ export default function App() {
         });
       }
     } else {
-      setGeneratedKey('');
+      // Use a microtask to avoid synchronous state update in effect body
+      Promise.resolve().then(() => setGeneratedKey(''));
     }
   }, [showShareModal, quizzes]);
 
@@ -92,15 +92,15 @@ export default function App() {
 
     if (decoded) {
       if (quizzes.some(q => q.id === decoded.id)) {
-        showAlert("Duplicate Quiz", "This quiz is already in your library.", "warning");
+        showAlert("重复试卷", "此试卷已在您的库中。", "warning");
       } else {
         setQuizzes([decoded, ...quizzes]);
         setImportKey('');
-        showAlert("Success", `Successfully imported: ${decoded.title}`, "success");
+        showAlert("成功", `成功导入：${decoded.title}`, "success");
         return true;
       }
     } else {
-      showAlert("Import Failed", "Invalid share key. Please ensure you copied the full key.", "error");
+      showAlert("导入失败", "无效的分享密钥。请确保您复制了完整的密钥。", "error");
     }
     return false;
   };
@@ -108,7 +108,7 @@ export default function App() {
   const handleImport = () => performImport(importKey);
 
   const handleDelete = (id: string) => {
-    showConfirm("Delete Quiz", "Are you sure you want to delete this quiz set permanently?", () => {
+    showConfirm("删除试卷", "您确定要永久删除这套试卷吗？", () => {
       setQuizzes(quizzes.filter(q => q.id !== id));
     });
   };
@@ -140,7 +140,7 @@ export default function App() {
     
     const quizToRun = { 
       ...quiz, 
-      title: `${quiz.title} (Random ${n})`,
+      title: `${quiz.title} (随机 ${n} 题)`,
       questions: selected 
     };
     
@@ -152,19 +152,19 @@ export default function App() {
   const renderHome = () => (
     <div className="space-y-12">
       <section className="text-center py-16 px-6 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl text-white shadow-xl">
-        <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">Master Your Knowledge</h1>
-        <p className="text-indigo-100 text-lg mb-10 max-w-2xl mx-auto">Create custom self-test sets, import community tests, and track your progress with professional auto-grading.</p>
+        <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">掌握您的知识</h1>
+        <p className="text-indigo-100 text-lg mb-10 max-w-2xl mx-auto">创建自定义自测题集，导入社区测试，并通过专业的自动评分跟踪您的进度。</p>
         
         <div className="flex flex-col items-center gap-6">
           <div className="flex flex-col md:flex-row justify-center items-stretch gap-4 w-full max-w-3xl">
             <Button size="lg" variant="success" className="shadow-lg px-8 h-[56px] whitespace-nowrap" onClick={() => setCurrentView('CREATE')}>
-              Create New Quiz
+              创建新试卷
             </Button>
             
             <div className="flex-grow flex items-stretch border border-white/20 rounded-xl overflow-hidden bg-white/10 backdrop-blur-sm">
               <input 
                 type="text" 
-                placeholder="Paste Share Key..." 
+                placeholder="粘贴分享密钥..." 
                 className="bg-transparent px-6 py-2 outline-none text-white placeholder-indigo-200 w-full text-base"
                 value={importKey}
                 onChange={(e) => setImportKey(e.target.value)}
@@ -176,7 +176,7 @@ export default function App() {
                   onClick={handleImport} 
                   isLoading={isImporting}
                 >
-                  Import Key
+                  导入密钥
                 </Button>
               </div>
             </div>
@@ -186,14 +186,14 @@ export default function App() {
 
       <section>
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-bold text-slate-800">My Library</h2>
-          <span className="text-slate-400 text-sm font-medium">{quizzes.length} Quizzes Saved</span>
+          <h2 className="text-2xl font-bold text-slate-800">我的库</h2>
+          <span className="text-slate-400 text-sm font-medium">已保存 {quizzes.length} 套试卷</span>
         </div>
 
         {quizzes.length === 0 ? (
           <div className="text-center py-20 bg-white border-2 border-dashed border-slate-200 rounded-3xl">
             <div className="mb-4 text-slate-300 text-6xl">📚</div>
-            <p className="text-slate-400 text-lg">Your library is empty. Create your first quiz above!</p>
+            <p className="text-slate-400 text-lg">您的库是空的。在上方创建您的第一套试卷吧！</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -223,7 +223,7 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       <nav className="bg-white border-b border-slate-200 h-16 sticky top-0 z-30 flex items-center px-6">
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentView('HOME')}>
@@ -232,11 +232,11 @@ export default function App() {
             </div>
             <span className="font-bold text-xl tracking-tight text-slate-800">Quiz<span className="text-indigo-600">Genius</span></span>
           </div>
-          {currentView !== 'HOME' && <Button variant="ghost" size="sm" onClick={() => setCurrentView('HOME')}>Back to Home</Button>}
+          {currentView !== 'HOME' && <Button variant="ghost" size="sm" onClick={() => setCurrentView('HOME')}>返回首页</Button>}
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      <main className="max-w-7xl mx-auto px-6 py-10 flex-grow w-full">
         {currentView === 'HOME' && renderHome()}
         {currentView === 'CREATE' && <QuizEditor onSave={handleSaveQuiz} onCancel={() => setCurrentView('HOME')} />}
         {currentView === 'QUIZ' && sessionQuiz && <QuizTaker quiz={sessionQuiz} onExit={() => { setCurrentView('HOME'); setSessionQuiz(null); }} />}
@@ -249,12 +249,12 @@ export default function App() {
       {showStartPrompt && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95">
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Ready to start?</h3>
-            <p className="text-slate-500 text-sm mb-6">Would you like to shuffle the questions for this session?</p>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">准备好开始了吗？</h3>
+            <p className="text-slate-500 text-sm mb-6">您想在本次测试中打乱题目顺序吗？</p>
             <div className="space-y-3">
-              <Button variant="primary" className="w-full py-3" onClick={() => startQuizSession(showStartPrompt, true)}>Yes, Shuffle</Button>
-              <Button variant="secondary" className="w-full py-3" onClick={() => startQuizSession(showStartPrompt, false)}>No, Use Original</Button>
-              <Button variant="ghost" className="w-full" onClick={() => setShowStartPrompt(null)}>Cancel</Button>
+              <Button variant="primary" className="w-full py-3" onClick={() => startQuizSession(showStartPrompt, true)}>是的，打乱顺序</Button>
+              <Button variant="secondary" className="w-full py-3" onClick={() => startQuizSession(showStartPrompt, false)}>不，使用原始顺序</Button>
+              <Button variant="ghost" className="w-full" onClick={() => setShowStartPrompt(null)}>取消</Button>
             </div>
           </div>
         </div>
@@ -264,8 +264,8 @@ export default function App() {
       {showShareModal && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 overflow-hidden">
-            <h3 className="text-xl font-bold text-slate-800 mb-2 text-center">Share This Quiz</h3>
-            <p className="text-slate-500 text-xs mb-6 text-center">V2 Ultra-Compressed Key. Copy and share the key below.</p>
+            <h3 className="text-xl font-bold text-slate-800 mb-2 text-center">分享此试卷</h3>
+            <p className="text-slate-500 text-xs mb-6 text-center">V2 超压缩密钥。复制并分享下方的密钥。</p>
             
             <div className="bg-slate-50 p-6 rounded-xl border mb-6 relative group overflow-hidden shadow-inner">
                <textarea 
@@ -274,15 +274,15 @@ export default function App() {
                  value={generatedKey} 
                  onClick={(e) => (e.target as HTMLTextAreaElement).select()}
                />
-               <div className="absolute bottom-2 right-3 text-[8px] font-bold text-slate-400 uppercase tracking-widest">v2 Compressed</div>
+               <div className="absolute bottom-2 right-3 text-[8px] font-bold text-slate-400 uppercase tracking-widest">v2 压缩版</div>
             </div>
 
             <div className="flex gap-4">
               <Button className="flex-grow shadow-lg shadow-indigo-100 py-4" onClick={() => {
                 navigator.clipboard.writeText(generatedKey);
-                showAlert("Copied", "Ultra-compressed key copied to clipboard!", "success");
-              }}>Copy Key String</Button>
-              <Button variant="ghost" className="px-8" onClick={() => setShowShareModal(null)}>Close</Button>
+                showAlert("已复制", "超压缩密钥已复制到剪贴板！", "success");
+              }}>复制密钥字符串</Button>
+              <Button variant="ghost" className="px-8" onClick={() => setShowShareModal(null)}>关闭</Button>
             </div>
           </div>
         </div>
@@ -292,8 +292,8 @@ export default function App() {
       {showRandomPrompt && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95">
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Random Extract</h3>
-            <p className="text-slate-500 text-sm mb-6">Extract {randomN} questions from {showRandomPrompt.questions.length}.</p>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">随机抽取</h3>
+            <p className="text-slate-500 text-sm mb-6">从 {showRandomPrompt.questions.length} 道题中抽取 {randomN} 道题。</p>
             <input 
               type="number" min="1" max={showRandomPrompt.questions.length}
               className="w-full p-4 rounded-xl border text-center text-3xl font-bold text-indigo-600 mb-6 focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -301,8 +301,8 @@ export default function App() {
               onChange={(e) => setRandomN(parseInt(e.target.value) || 1)}
             />
             <div className="flex flex-col gap-2">
-              <Button onClick={() => startRandomQuizSession(showRandomPrompt, randomN)}>Start Random Test</Button>
-              <Button variant="ghost" onClick={() => setShowRandomPrompt(null)}>Cancel</Button>
+              <Button onClick={() => startRandomQuizSession(showRandomPrompt, randomN)}>开始随机测试</Button>
+              <Button variant="ghost" onClick={() => setShowRandomPrompt(null)}>取消</Button>
             </div>
           </div>
         </div>
@@ -320,7 +320,7 @@ export default function App() {
 
       <footer className="py-10 border-t border-slate-200 bg-white">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-400 text-sm">
-          <p>&copy; 2024 QuizGenius. Professional Grade Self-Testing.</p>
+          <p>&copy; 2024 QuizGenius. 专业级自测平台。</p>
           <div className="flex gap-6">
             <button className="text-indigo-600 hover:underline font-semibold" onClick={() => setShowDevDocs(true)}>出题人指南</button>
           </div>

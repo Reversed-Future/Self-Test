@@ -22,8 +22,8 @@ export const Dialog: React.FC<DialogProps> = ({
   title,
   message,
   type = 'info',
-  confirmText = 'Confirm',
-  cancelText = 'Cancel'
+  confirmText = '确认',
+  cancelText = '取消'
 }) => {
   if (!isOpen) return null;
 
@@ -69,7 +69,7 @@ export const Dialog: React.FC<DialogProps> = ({
               <Button variant="danger" className="flex-1" onClick={() => { onConfirm?.(); onClose(); }}>{confirmText}</Button>
             </>
           ) : (
-            <Button variant="primary" className="w-full py-3" onClick={onClose}>Got it</Button>
+            <Button variant="primary" className="w-full py-3" onClick={onClose}>知道了</Button>
           )}
         </div>
       </div>

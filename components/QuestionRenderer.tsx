@@ -76,7 +76,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
       {/* Confused Indicator in Graded view */}
       {isGraded && isConfused && (
         <div className="absolute top-4 right-4 px-2 py-1 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded uppercase tracking-wider flex items-center gap-1">
-          <span className="text-sm">?</span> Marked Confused
+          <span className="text-sm">?</span> 已标记为困惑
         </div>
       )}
 
@@ -87,9 +87,13 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
         <div className="flex-grow pr-8">
           <div className="flex items-center gap-2 mb-1">
              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-               {question.type.replace(/_/g, ' ')}
+               {question.type === QuestionType.SINGLE_CHOICE ? '单选题' : 
+                question.type === QuestionType.MULTIPLE_CHOICE ? '多选题' :
+                question.type === QuestionType.TRUE_FALSE ? '判断题' :
+                question.type === QuestionType.FILL_IN_THE_BLANK ? '填空题' :
+                question.type === QuestionType.SUBJECTIVE ? '主观题' : question.type}
              </span>
-             <span className="text-xs text-slate-400">• {question.points} pts</span>
+             <span className="text-xs text-slate-400">• {question.points} 分</span>
           </div>
           <h4 className="text-lg font-medium text-slate-800 whitespace-pre-wrap">{question.text}</h4>
         </div>
@@ -147,7 +151,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
                     : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                 } ${isGraded ? 'pointer-events-none' : ''}`}
               >
-                {val}
+                {val === 'true' ? '正确' : '错误'}
               </button>
             ))}
           </div>
@@ -164,7 +168,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
                   )}
                   <input
                     type="text"
-                    placeholder={`Answer for blank ${bIdx + 1}...`}
+                    placeholder={`第 ${bIdx + 1} 个空的答案...`}
                     value={currentVal}
                     onChange={(e) => handleBlankChange(bIdx, e.target.value)}
                     className="flex-grow p-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
@@ -178,7 +182,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
 
         {question.type === QuestionType.SUBJECTIVE && (
           <textarea
-            placeholder="Write your answer in detail..."
+            placeholder="详细写下您的答案..."
             rows={4}
             value={answer as string || ''}
             onChange={(e) => !isGraded && onChange(e.target.value)}

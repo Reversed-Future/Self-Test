@@ -69,13 +69,15 @@ const toMinified = (quiz: QuizSet) => {
 /**
  * Converts a minified object back to a QuizSet
  */
-const fromMinified = (min: any): QuizSet => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const fromMinified = (min: Record<string, any>): QuizSet => {
   return {
     id: min[KEY_MAP.id],
     title: min[KEY_MAP.title],
     description: min[KEY_MAP.description],
     createdAt: min[KEY_MAP.createdAt],
-    questions: (min[KEY_MAP.questions] as any[]).map(q => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    questions: (min[KEY_MAP.questions] as Record<string, any>[]).map(q => {
       const type = REV_TYPE_MAP[q[KEY_MAP.type]];
       const isChoice = type === QuestionType.SINGLE_CHOICE || type === QuestionType.MULTIPLE_CHOICE;
       
@@ -97,15 +99,18 @@ const fromMinified = (min: any): QuizSet => {
           correctAnswers = (rawAnswers as number[]).map(idx => (idx + 1).toString());
         } else {
           // 向后兼容：旧版 V2 格式（对象数组）
-          options = rawOptions.map((o: any) => ({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          options = rawOptions.map((o: Record<string, any>) => ({
             id: o[KEY_MAP.id] || '',
             text: o[KEY_MAP.text] || ''
           }));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           correctAnswers = (rawAnswers as any[]).map(String);
         }
       } else if (rawOptions) {
         // 其他可能带选项的题型 fallback
-        options = rawOptions.map((o: any) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        options = rawOptions.map((o: Record<string, any>) => ({
           id: o[KEY_MAP.id] || '',
           text: o[KEY_MAP.text] || ''
         }));
@@ -180,15 +185,15 @@ export const encodeQuizKey = async (quiz: QuizSet): Promise<string> => {
     const jsonStr = JSON.stringify(minified);
     const uint8 = new TextEncoder().encode(jsonStr);
     
-    const stream = new Blob([uint8 as any]).stream();
+    const stream = new Blob([uint8 as BlobPart]).stream();
     const compressionStream = new CompressionStream('deflate');
     const compressedStream = stream.pipeThrough(compressionStream);
     
     const compressedBuffer = await consumeStream(compressedStream);
     // Prefix with 'v2.' to identify the new format
     return 'v2.' + uint8ArrayToBase64(compressedBuffer);
-  } catch (e) {
-    console.error("Failed to encode quiz key", e);
+  } catch (e: unknown) {
+    console.error("Failed to encode quiz key", e instanceof Error ? e.message : e);
     return '';
   }
 };
@@ -202,7 +207,7 @@ export const decodeQuizKey = async (key: string): Promise<QuizSet | null> => {
     const actualKey = isV2 ? key.substring(3) : key;
     
     const compressedData = base64ToUint8Array(actualKey);
-    const stream = new Blob([compressedData as any]).stream();
+    const stream = new Blob([compressedData as BlobPart]).stream();
     const decompressionStream = new DecompressionStream('deflate');
     const decompressedStream = stream.pipeThrough(decompressionStream);
     
@@ -217,8 +222,8 @@ export const decodeQuizKey = async (key: string): Promise<QuizSet | null> => {
     
     // Legacy V1 support
     return parsed as QuizSet;
-  } catch (e: any) {
-    console.error("Failed to decode quiz key", e.message || e);
+  } catch (e: unknown) {
+    console.error("Failed to decode quiz key", e instanceof Error ? e.message : e);
     return null;
   }
 };
